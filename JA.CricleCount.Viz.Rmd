@@ -1,0 +1,104 @@
+---
+title: "JA Circle Count Visualization"
+output: html_notebook
+---
+```{r libs}
+library(ggplot2)
+library(dplyr)
+library(ggstatsplot)
+```
+
+
+```{r add dxj}
+#reading the dxj info
+dxj.df.4.JA <- read.csv("/Users/apple/Desktop/Eric/Research/Karen/Classifier/Data/MostUpdated/JointAttentionRawData/JA.FeatureExtraction..R.Proj./Data/NewRawDataExports_06.13.2022/Dxj.csv")
+#View(dxj.df.4.JA)
+ja.full.partial.cricle.count.4.40.subjects <- read.csv("/Users/apple/Desktop/Eric/Research/Karen/Classifier/Data/MostUpdated/JointAttentionRawData/JA.FeatureExtraction..R.Proj./Data/NewRawDataExports_06.13.2022/All/Subjects.With.ExtractedFeatures/FinalRes/ja.full.partial.cricle.count.df.4.all.subjects.csv", row.names = 1)
+
+dxj.df.4.JA$SubjectID <- 
+  toupper(dxj.df.4.JA$SubjectID)
+ja.full.partial.cricle.count.4.40.subjects$SubjectID <- 
+  toupper(ja.full.partial.cricle.count.4.40.subjects$SubjectID)
+
+ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj <- 
+  merge(x = ja.full.partial.cricle.count.4.40.subjects, y = dxj.df.4.JA, by = "SubjectID", all.x = TRUE)
+#View(ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj)
+
+length(intersect(ja.full.partial.cricle.count.4.40.subjects$SubjectID, dxj.df.4.JA$SubjectID))
+
+#write.csv(ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj, file = "/Users/apple/Desktop/Eric/Research/Karen/Classifier/Data/MostUpdated/JointAttentionRawData/JA.FeatureExtraction..R.Proj./Data/NewRawDataExports_06.13.2022/All/Subjects.With.ExtractedFeatures/FinalRes/ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj.csv")
+#save(ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj, file = "/Users/apple/Desktop/Eric/Research/Karen/Classifier/Data/MostUpdated/JointAttentionRawData/JA.FeatureExtraction..R.Proj./Data/NewRawDataExports_06.13.2022/All/Subjects.With.ExtractedFeatures/FinalRes/ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj")
+```
+
+
+```{r Reading the data}
+
+# save(ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj,
+#      file = "./Data/NewRawDataExports_06.13.2022/ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj")
+
+ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj
+#View(ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj)
+
+ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj.4.ggplot <- 
+  convert.df.2.ggplot.firndly(df = ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj, no.of.fixed.characteristics = 4 )
+str(ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj)
+```
+
+
+
+```{r}
+
+
+Mesearement.vctr <- 
+  unique(ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj.4.ggplot$Mesearement)
+length(Mesearement.vctr)#14
+res.plot.list <- list()
+#in each iteratio a new plot will be added to the list to finally be plotted using "combine_plots" function 
+i <- 0
+i <- i+1
+p1 <- 
+  ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj.4.ggplot %>%
+  dplyr::filter(Mesearement == Mesearement.vctr[i]) %>%
+  ggbetweenstats(
+    x = Dxj, y = MesearementValue,
+    palette = "Dark2",
+    ggplot.component = scale_color_manual(values=c("red","green")) ,
+    title = str_sub(string = Mesearement.vctr[i], start = 42, end = str_length(Mesearement.vctr[i]))
+    
+  ) 
+res.plot.list[[i]] <- p1
+i
+
+i <- 0
+i <- i +  1
+#the first 41 charachter in the Mesearement.vctr[i] is the same for all measurment name
+file.name4.pdf <- paste("./Viz/", str_sub(string = Mesearement.vctr[i], start = 42, end = str_length(Mesearement.vctr[i])), ".pdf",sep = "")
+pdf(file.name4.pdf)
+res.plot.list[[i]]
+dev.off()
+i
+
+View(ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj.4.ggplot)
+
+#adding another col to be able to compare based on partial vs. full cycles
+ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj.4.ggplot.v2 <- 
+ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj.4.ggplot %>%
+  mutate(Full.vs.Partial = 
+           case_when( str_detect(Mesearement, "Partial") ~ "No.of.Partial.Cyc",
+                      str_detect(Mesearement, "Full") ~ "No.of.Full.Cyc."
+             
+           )
+  )
+
+#plotting number of all partial and all full cycle
+pdf("./Viz/All.Partial.FullV3.pdf", width = 12)
+ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj.4.ggplot.v2 %>%
+  grouped_ggbetweenstats(
+    x = Dxj, y = MesearementValue, grouping.var = Full.vs.Partial,
+    palette = "Dark2",
+    ggplot.component = scale_color_manual(values=c("red","green")),
+    ylab = "No of Cyles")
+dev.off()
+
+```
+

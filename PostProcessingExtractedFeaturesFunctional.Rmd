@@ -1,0 +1,457 @@
+---
+title: "Psoprocessing the JA feature file"
+output: html_notebook
+---
+
+
+#Code
+In this notebook I'm going to write code for converting the csv files that genetrated in the JA.FeatExtraction.Rmd file and convert it to the final format accroding to the Karen's comments
+
+1- I'm going to merge the "other" or "blinking.OR.not.looking.at.the.display" with less tha 100ms. with the previous lokking area
+2- extract number of full and partial joint attention crircles 
+```{r Libs}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(skimr)
+library(stringr)
+```
+
+
+
+
+#Reading the data
+
+```{r Getting all file names}
+#"check.names=FALSE" allows to have % in the colnames
+
+#listing all csv files in the path
+##the first 5 character of each element in the below lis show the subject ID
+filenames.list <- list.files("./Data/NewRawDataExports_06.13.2022/All", pattern="*.csv")
+
+filenames.full.path.list <- list.files("./Data/NewRawDataExports_06.13.2022/All", pattern="*.csv", full.names = TRUE)
+
+
+```
+
+```{r}
+driver.fun()
+```
+
+
+```{r Reading files and applying main functions on them}
+driver.fun <- function()
+  {
+ 
+  No.of.TAOI <- 7
+#total number of subjects (which is the total number of files in the folder)
+no.of.JA.files <-
+  length(filenames.full.path.list)
+
+#The below df contains six features (looking.area,	 start.time.relative,	 start.time.original	 end.time.relative,	 end.time.original, and	 duration) for each TAOI for all subjects (after merging "other" and "blinking" with <=100ms duration).
+#The first column would be the subject ID and the rest are correspond to the features. So the total number of columns would be "6*No.of.TAOI + 1"
+
+#each subject would have 200 rows, so I'm gonna do rbind to add data for each subject to this final df.
+final.features.merged.df.4.all.subjects <-
+  as.data.frame(matrix(nrow = 1, 
+                       ncol = 6*No.of.TAOI + 1))
+
+colnames(final.features.merged.df.4.all.subjects)<- 
+  colnames(final.csv.features.merged.4.this.sbj)
+
+#colnames(final.csv.features.merged.4.this.sbj)=========
+#  [1] "SubjectID"                                                                            
+#  [2] "AOI.hit..BA.Joint.Attention.04.12.2019...04_Box_Target_Box.looking.area"                
+#  [3] "AOI.hit..BA.Joint.Attention.04.12.2019...04_Box_Target_Box.start.time.relative"         
+#  [4] "AOI.hit..BA.Joint.Attention.04.12.2019...04_Box_Target_Box.start.time.original"         
+#  [5] "AOI.hit..BA.Joint.Attention.04.12.2019...04_Box_Target_Box.end.time.relative"           
+#  [6] "AOI.hit..BA.Joint.Attention.04.12.2019...04_Box_Target_Box.end.time.original"           
+#  [7] "AOI.hit..BA.Joint.Attention.04.12.2019...04_Box_Target_Box.duration"                    
+#  [8] "AOI.hit..BA.Joint.Attention.04.12.2019...05_Comb_Target_Comb.looking.area"              
+#  [9] "AOI.hit..BA.Joint.Attention.04.12.2019...05_Comb_Target_Comb.start.time.relative"       
+# [10] "AOI.hit..BA.Joint.Attention.04.12.2019...05_Comb_Target_Comb.start.time.original"       
+# [11] "AOI.hit..BA.Joint.Attention.04.12.2019...05_Comb_Target_Comb.end.time.relative"         
+# [12] "AOI.hit..BA.Joint.Attention.04.12.2019...05_Comb_Target_Comb.end.time.original"         
+# [13] "AOI.hit..BA.Joint.Attention.04.12.2019...05_Comb_Target_Comb.duration"                  
+# [14] "AOI.hit..BA.Joint.Attention.04.12.2019...06_PointyComb_Target_Comb.looking.area"        
+# [15] "AOI.hit..BA.Joint.Attention.04.12.2019...06_PointyComb_Target_Comb.start.time.relative" 
+# [16] "AOI.hit..BA.Joint.Attention.04.12.2019...06_PointyComb_Target_Comb.start.time.original" 
+# [17] "AOI.hit..BA.Joint.Attention.04.12.2019...06_PointyComb_Target_Comb.end.time.relative"   
+# [18] "AOI.hit..BA.Joint.Attention.04.12.2019...06_PointyComb_Target_Comb.end.time.original"   
+# [19] "AOI.hit..BA.Joint.Attention.04.12.2019...06_PointyComb_Target_Comb.duration"            
+# [20] "AOI.hit..BA.Joint.Attention.04.12.2019...08_GreatHair_Target_Teddy.looking.area"        
+# [21] "AOI.hit..BA.Joint.Attention.04.12.2019...08_GreatHair_Target_Teddy.start.time.relative" 
+# [22] "AOI.hit..BA.Joint.Attention.04.12.2019...08_GreatHair_Target_Teddy.start.time.original" 
+# [23] "AOI.hit..BA.Joint.Attention.04.12.2019...08_GreatHair_Target_Teddy.end.time.relative"   
+# [24] "AOI.hit..BA.Joint.Attention.04.12.2019...08_GreatHair_Target_Teddy.end.time.original"   
+# [25] "AOI.hit..BA.Joint.Attention.04.12.2019...08_GreatHair_Target_Teddy.duration"            
+# [26] "AOI.hit..BA.Joint.Attention.04.12.2019...10_Spinner_Target_Spinner.looking.area"        
+# [27] "AOI.hit..BA.Joint.Attention.04.12.2019...10_Spinner_Target_Spinner.start.time.relative" 
+# [28] "AOI.hit..BA.Joint.Attention.04.12.2019...10_Spinner_Target_Spinner.start.time.original" 
+# [29] "AOI.hit..BA.Joint.Attention.04.12.2019...10_Spinner_Target_Spinner.end.time.relative"   
+# [30] "AOI.hit..BA.Joint.Attention.04.12.2019...10_Spinner_Target_Spinner.end.time.original"   
+# [31] "AOI.hit..BA.Joint.Attention.04.12.2019...10_Spinner_Target_Spinner.duration"            
+# [32] "AOI.hit..BA.Joint.Attention.04.12.2019...12_GreatScarf_Target_Scarf.looking.area"       
+# [33] "AOI.hit..BA.Joint.Attention.04.12.2019...12_GreatScarf_Target_Scarf.start.time.relative"
+# [34] "AOI.hit..BA.Joint.Attention.04.12.2019...12_GreatScarf_Target_Scarf.start.time.original"
+# [35] "AOI.hit..BA.Joint.Attention.04.12.2019...12_GreatScarf_Target_Scarf.end.time.relative"  
+# [36] "AOI.hit..BA.Joint.Attention.04.12.2019...12_GreatScarf_Target_Scarf.end.time.original"  
+# [37] "AOI.hit..BA.Joint.Attention.04.12.2019...12_GreatScarf_Target_Scarf.duration"           
+# [38] "AOI.hit..BA.Joint.Attention.04.12.2019...17_LookTruck_Target_Truck.looking.area"        
+# [39] "AOI.hit..BA.Joint.Attention.04.12.2019...17_LookTruck_Target_Truck.start.time.relative" 
+# [40] "AOI.hit..BA.Joint.Attention.04.12.2019...17_LookTruck_Target_Truck.start.time.original" 
+# [41] "AOI.hit..BA.Joint.Attention.04.12.2019...17_LookTruck_Target_Truck.end.time.relative"   
+# [42] "AOI.hit..BA.Joint.Attention.04.12.2019...17_LookTruck_Target_Truck.end.time.original"   
+# [43] "AOI.hit..BA.Joint.Attention.04.12.2019...17_LookTruck_Target_Truck.duration"
+#Rest======
+
+#The below df contains the number of full and partial JA circles for all subjects.
+#the first column would be the subject ID and the rest are correspond to number of full/partial JA circles. So the total number of columns would be "2*No.of.TAOI + 1"
+ja.full.partial.cricle.count.df.4.all.subjects <-
+  as.data.frame(matrix(nrow = no.of.JA.files, 
+                       ncol = 2*No.of.TAOI + 1))
+
+loop.index <- 0
+#browser() 
+for (filenames.full.path in filenames.full.path.list) 
+{
+  #browser() 
+  
+  loop.index <- 
+    loop.index + 1
+  #extracting the subject ID
+  SubjectID <- 
+    str_sub(filenames.list[[loop.index]],1,5)
+  print(">>>><<<< >>>><<<< >>>><<<< >>>><<<< >>>><<<< >>>><<<<")
+  print(paste(loop.index, " from ", no.of.JA.files))
+  print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+  final.csv.features.4.this.sbj <- 
+    read.csv(file = filenames.full.path, row.names = 1)
+  final.csv.features.merged.4.this.sbj <- 
+    ja.merge.Other.and.Blinking.less.than.100.ms.(final.csv.features = final.csv.features.4.this.sbj, subjectID = SubjectID)
+  
+
+  final.features.merged.df.4.all.subjects <-
+    rbind(final.features.merged.df.4.all.subjects , 
+          final.csv.features.merged.4.this.sbj)
+  #in calling "ja.full.partial.cricle.count" we should drop the first column
+  #beacuse it's subject ID and in "ja.full.partial.cricle.count" function the first column is the looking area for the first TAOI
+  ja.full.partial.cricle.count.df.4.current.sbj <- 
+    ja.full.partial.cricle.count(final.csv.features.merged = final.csv.features.merged.4.this.sbj[,-1], 
+                              No.of.TAOI = No.of.TAOI)
+ #assigning subject ID for this subject
+ ja.full.partial.cricle.count.df.4.current.sbj$SubjectID <- 
+    SubjectID
+ #adding to the final df 
+ ja.full.partial.cricle.count.df.4.all.subjects[loop.index,] <-
+   ja.full.partial.cricle.count.df.4.current.sbj
+}
+
+#assigning the appropirate col names to the two final dfs
+colnames(final.features.merged.df.4.all.subjects) <- 
+  colnames(final.csv.features.merged.4.this.sbj)
+colnames(ja.full.partial.cricle.count.df.4.all.subjects) <- 
+  (colnames(ja.full.partial.cricle.count.df.4.current.sbj))
+#removing the first NA row
+final.features.merged.df.4.all.subjects <-
+  final.features.merged.df.4.all.subjects[-1,]
+
+
+
+#writing dfs to HDD=====
+relative.folder.path <- 
+  "./Data/NewRawDataExports_06.13.2022/All/Subjects.With.ExtractedFeatures/FinalRes/"
+
+file.name <- paste(relative.folder.path, "final.features.merged.df.4.all.subjects.csv", sep = "")
+write.csv(final.features.merged.df.4.all.subjects, file = file.name)
+
+
+file.name <- paste(relative.folder.path, "ja.full.partial.cricle.count.df.4.all.subjects.csv", sep = "")
+write.csv(ja.full.partial.cricle.count.df.4.all.subjects, file = file.name)
+  
+
+
+}
+```
+
+Merging the "other" and "blinking.OR.not.looking.at.the.display" with less than 100ms. with the previous lokking area
+
+```{r mergeing function defenition}
+#INPUT: "final.csv.features" a df that is the output of "ja.Preprocessing.and.FeatureExtraction" which was processed using "write.JA.lookingPatterns2HDD" function. "subjectID": subject ID which is usally the first 5 characters of the file name. 
+#OUTPUT: "final.csv.features.merged" the same df that "other" and "blinking.OR.not.looking.at.the.display" with less than 100ms were merged.
+ja.merge.Other.and.Blinking.less.than.100.ms. <- function(final.csv.features, subjectID)
+{
+    #merging "other" and "blinking.OR.not.looking.at.the.display"====
+  #below df is a sample df generated in the JA.FeatExtraction.Rmd
+  dim(final.csv.features)
+  #View(final.csv.features)
+  #for each TAOI, we have six different cols: 
+  #"looking.area",
+  #    "start.time.relative", "start.time.original", 
+  #    "end.time.relative", "end.time.original",
+  #    "duration"
+  #View(final.csv.features)
+  
+  #Renaming the name of area to make it more simple=====
+  final.csv.features[final.csv.features == "Other"] <- 
+    "O"
+  final.csv.features[final.csv.features == "blinking.OR.not.looking.at.the.display"] <- 
+    "B"
+  final.csv.features[final.csv.features == "Hand"] <- 
+    "H"
+  final.csv.features[final.csv.features == "Face"] <- 
+    "F"
+  final.csv.features[final.csv.features == "TAOI"] <- 
+    "T"
+  
+  for (TAOI.No in c(1:No.of.TAOI)) 
+  {
+    
+    TOA.col.index <-  
+      (TAOI.No - 1 ) * 6 + 1 
+    No.of.Partial.JA.Circle <- 0 
+    No.of.Full.JA.Circle <- 0 
+    #browser()
+    if (final.csv.features[1,TOA.col.index] == -1) #this TAOI was not hitted
+    {
+      next()
+    }
+    
+    #calculating the number of rows that we have in the corresponding column for the current TAOI
+    no.of.rows <- 
+      length(na.omit(final.csv.features[,TOA.col.index]))
+    
+    #in this loop I'm going to count the "No.of.Partial.JA.Circle" 
+    #and "No.of.Full.JA.Circle"
+    #So, in each iteration; I should check the three last areas that were hitted
+    
+    current.row.index <- 2
+    while (current.row.index <= (no.of.rows) ) 
+    {
+      prev.hitted.area <- 
+        final.csv.features[(current.row.index - 1),TOA.col.index]
+      current.hitted.area <- 
+        final.csv.features[current.row.index ,TOA.col.index]
+      current.hitted.area.duration <- 
+        final.csv.features[current.row.index,TOA.col.index+5]
+      
+      #if there two consecutive hitted area with the same name (it could happen if in the previous iterations merge happened)
+      #Then the two corresponding rwos shold be merged
+      should.merge.with.prev.beacuse.the.same.area <- 
+        (prev.hitted.area == current.hitted.area)
+      
+     if (should.merge.with.prev.beacuse.the.same.area) 
+      {
+        #adding the duration time to the prev. duration time
+        final.csv.features[current.row.index - 1,TOA.col.index + 5] <-
+          final.csv.features[current.row.index - 1,TOA.col.index + 5] + current.hitted.area.duration
+        
+        #shifting the rest of the df one row up (just that part of the df that is correspond to the current TAOI)
+        final.csv.features[c((current.row.index):(no.of.rows)),c(TOA.col.index : (TOA.col.index + 5))] <- 
+          final.csv.features[c((current.row.index+1):(no.of.rows+1)),c(TOA.col.index : (TOA.col.index + 5))]
+        #becuse of shifiting the number of non.NA rows decreased by one!
+        no.of.rows <-
+          no.of.rows - 1
+        #because we moved the rows, we shouldn't change the current.row.index. 
+        #Now current.row.index shows a new row 
+        next()
+      }
+      #browser()
+       #check the merging criteri
+      should.merge.with.prev.beacuse.of.short.blinkingORothers <- 
+        (current.hitted.area %in% c("B", "O")) & current.hitted.area.duration <= 100
+  
+      if (should.merge.with.prev.beacuse.of.short.blinkingORothers) 
+      {
+        #adding the duration time to the prev. duration time
+        final.csv.features[current.row.index - 1,TOA.col.index + 5] <-
+          final.csv.features[current.row.index - 1,TOA.col.index + 5] + current.hitted.area.duration
+        
+        #shifting the rest of the df one row up (just that part of the df that is correspond to the current TAOI)
+        final.csv.features[c((current.row.index):(no.of.rows)),c(TOA.col.index : (TOA.col.index + 5))] <- 
+          final.csv.features[c((current.row.index+1):(no.of.rows+1)),c(TOA.col.index : (TOA.col.index + 5))]
+        #becuse of shifiting the number of non.NA rows decreased by one!
+        no.of.rows <-
+          no.of.rows - 1
+        #because we moved the rows, we shouldn't change the current.row.index. 
+        #Now current.row.index shows a new row 
+        next()
+      }
+      #update the current.row.index for the nex iteration
+      current.row.index <- current.row.index + 1 
+    }
+    
+  }
+  sbj.vctr <- 
+    rep(subjectID, nrow(final.csv.features))
+  final.csv.features.merged<- 
+    cbind(SubjectID= sbj.vctr, final.csv.features)
+  return(final.csv.features.merged)
+}#function
+
+```
+
+
+
+```{r counting full/partial function defenition "}
+
+ja.full.partial.cricle.count <- function(final.csv.features.merged, No.of.TAOI)
+{
+  #browser()
+  #for each TAOI, we have six different cols: 
+  #"looking.area",
+  #    "start.time.relative", "start.time.original", 
+  #    "end.time.relative", "end.time.original",
+  #    "duration"
+  #View(final.csv.features.merged)
+  
+  #the final df for full/partial JA cricles counts
+  #for each TAOI we will compute two numbers for full/partial JA cricles counts
+  #the first col would be the sbj ID
+  #MANUAL!!!
+  no.of.subjects <- 1
+  subject.NO <- 1
+  ja.cricles.counts.df <-  matrix(nrow = no.of.subjects, 
+         ncol = (2*No.of.TAOI +1) )
+  ja.cricles.counts.df <- 
+    as.data.frame(ja.cricles.counts.df)
+  #assigning the colnames
+  #seq(2,2*No.of.TAOI,2) is the vector corresponding to the even columns that are supposed to have number of full JA cycles
+  #seq(3,2*No.of.TAOI+1,2) is the vector corresponding to the even columns that are supposed to have number of partial JA cycles
+  colnames(ja.cricles.counts.df)[seq(2,2*No.of.TAOI,2)] <- 
+    paste(TAOI.Target.ColName.Vctr, ".No.of.Full.JA.Cycles", sep = "__")
+  colnames(ja.cricles.counts.df)[seq(3,2*No.of.TAOI+1,2)]<- 
+    paste(TAOI.Target.ColName.Vctr, ".No.of.Partial.JA.Cycles", sep = "__")
+  colnames(ja.cricles.counts.df)[1] <- "SubjectID"
+  
+  
+  #in each iteratoin full/partial JA cricles will be calculated for one TAOI
+  
+  for (TAOI.No in c(1:No.of.TAOI)) 
+  {
+    #TAOI.No <- 1
+    TOA.col.index <-  
+      (TAOI.No - 1 ) * 6 + 1 
+    No.of.Partial.JA.Circle <- 0 
+    No.of.Full.JA.Circle <- 0 
+    
+    if (final.csv.features.merged[1,TOA.col.index] == -1) #this TAOI was not hitted
+    {
+      next()
+    }
+    
+    #calculating the number of rows that we have in the corresponding column for the current TAOI
+    no.of.rows <- 
+      length(na.omit(final.csv.features.merged[,TOA.col.index]))
+    
+    #in this loop I'm going to count the "No.of.Partial.JA.Circle" 
+    #and "No.of.Full.JA.Circle"
+    #So, in each iteration; I should check the three last areas that were hitted
+  
+    current.row.index <- 1
+    while (current.row.index <= (no.of.rows -2) ) 
+    {
+      first.hitted.area <- 
+        final.csv.features.merged[current.row.index,TOA.col.index]
+      second.hitted.area <- 
+        final.csv.features.merged[current.row.index + 1,TOA.col.index]
+      third.hitted.area <- 
+        final.csv.features.merged[current.row.index + 2,TOA.col.index]
+      
+      last.three.looking.are.vctr <- 
+        c(first.hitted.area, second.hitted.area, third.hitted.area)
+  
+      is.Full.JA.Circle <- 
+        (sum(last.three.looking.are.vctr == c("T","F","T")) == 3) | (sum(last.three.looking.are.vctr == c("F","T","F")) == 3)
+        
+      #check for full joint attention
+      if (is.Full.JA.Circle) 
+      {
+        No.of.Full.JA.Circle <- 
+          No.of.Full.JA.Circle + 1
+        #update the current.row.index for the nex iteration
+        #the nex circle can start from  current.row.index + 2  (has overlap with the current one)
+        current.row.index <- current.row.index + 2 
+        next()
+      }
+      #The same for partial JA cricle======
+      is.Partial.JA.Circle <- 
+        (sum(last.three.looking.are.vctr == c("H","F","H")) == 3) |
+        (sum(last.three.looking.are.vctr == c("H","T","H")) == 3) |  (sum(last.three.looking.are.vctr == c("F","H","F")) == 3) |  (sum(last.three.looking.are.vctr == c("T","H","T")) == 3)
+        
+      #check for full joint attention
+      if (is.Partial.JA.Circle) 
+      {
+        No.of.Partial.JA.Circle <- 
+          No.of.Partial.JA.Circle + 1
+        #update the current.row.index for the nex iteration
+        #the nex circle can start from  current.row.index + 2  (has overlap with the current one)
+        current.row.index <- current.row.index + 2 
+        next()
+      }
+  
+      
+      
+      #update the current.row.index for the nex iteration
+      current.row.index <- current.row.index + 1 
+    }
+    
+    #write the JA.Circles
+    ja.cricles.counts.df[subject.NO, TAOI.No*2] <- 
+      No.of.Full.JA.Circle
+    ja.cricles.counts.df[subject.NO, TAOI.No*2+1] <- 
+      No.of.Partial.JA.Circle
+        
+    
+  }
+return(ja.cricles.counts.df) 
+}
+```
+
+
+
+#Notes
+1- only "Blinking" and "Other" are merged with the prev. looking area if the duration is <100 m.s.
+2- if "Blinking" and "Other" are the first area then those are not merging (because there is no prev. area)
+
+
+
+```{r add dxj}
+#reading the dxj info
+dxj.df.4.JA <- read.csv("/Users/apple/Desktop/Eric/Research/Karen/Classifier/Data/MostUpdated/JointAttentionRawData/JA.FeatureExtraction..R.Proj./Data/NewRawDataExports_06.13.2022/Dxj.csv")
+#View(dxj.df.4.JA)
+ja.full.partial.cricle.count.4.40.subjects <- read.csv("/Users/apple/Desktop/Eric/Research/Karen/Classifier/Data/MostUpdated/JointAttentionRawData/JA.FeatureExtraction..R.Proj./Data/NewRawDataExports_06.13.2022/All/Subjects.With.ExtractedFeatures/FinalRes/ja.full.partial.cricle.count.df.4.all.subjects.csv", row.names = 1)
+
+dxj.df.4.JA$SubjectID <- 
+  toupper(dxj.df.4.JA$SubjectID)
+ja.full.partial.cricle.count.4.40.subjects$SubjectID <- 
+  toupper(ja.full.partial.cricle.count.4.40.subjects$SubjectID)
+
+ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj <- 
+  merge(x = ja.full.partial.cricle.count.4.40.subjects, y = dxj.df.4.JA, by = "SubjectID", all.x = TRUE)
+#View(ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj)
+
+length(intersect(ja.full.partial.cricle.count.4.40.subjects$SubjectID, dxj.df.4.JA$SubjectID))
+
+#write.csv(ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj, file = "/Users/apple/Desktop/Eric/Research/Karen/Classifier/Data/MostUpdated/JointAttentionRawData/JA.FeatureExtraction..R.Proj./Data/NewRawDataExports_06.13.2022/All/Subjects.With.ExtractedFeatures/FinalRes/ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj.csv")
+#save(ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj, file = "/Users/apple/Desktop/Eric/Research/Karen/Classifier/Data/MostUpdated/JointAttentionRawData/JA.FeatureExtraction..R.Proj./Data/NewRawDataExports_06.13.2022/All/Subjects.With.ExtractedFeatures/FinalRes/ja.full.partial.cricle.count.df.4.all.subjects.with.Dxj")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
